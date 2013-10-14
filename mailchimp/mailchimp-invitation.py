@@ -8,7 +8,7 @@ Usage:
   mailchimp-invitation.py -h, --help
 
 Options:
-  -c, --code=<code>         [default: None]
+  -c, --code=<code>         
   -l, --list=<list name>    [default: the longaccess news]
   -k, --key=<key>           [default: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-xxx]
 
