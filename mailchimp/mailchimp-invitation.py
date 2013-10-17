@@ -4,6 +4,7 @@
 Usage:
   mailchimp-invitation.py [options] set <email>
   mailchimp-invitation.py [options] setgroup <group>
+  mailchimp-invitation.py [options] setall
   mailchimp-invitation.py [options] get <email> 
   mailchimp-invitation.py -h, --help
 
@@ -142,6 +143,43 @@ def setGroupInvite(list_name, group_name):
             }
             })
 
+def setListInvite(list_name):
+    list_id = getListID(list_name)
+    
+    # Get all members of list.
+    members = mc.lists.members(
+        id=list_id, 
+        opts = {
+            'limit': 100,
+            }
+        )
+    print 'Updating %s records.' % members['total']
+    total_recs = members['total']
+    page = 0
+    count = 0
+    
+    while 100*page < total_recs: 
+        # Prepare the batch update data (in batches of 100s)
+        batch = []
+        for member in members['data']:
+            count += 1 
+            invite = invcode(member['email'])
+            batch.append(
+                { 'email': { 'email': member['email']}, 'merge_vars': {'invcode': invite} }
+                )
+            print '%03d\t%s\t\t%s' % (count, member['email'], invite)
+        # Batch update list
+        upd = mc.lists.batch_subscribe( id=list_id, update_existing=True, replace_interests=False, batch=batch)
+        page += 1
+        # read next batch.
+        members = mc.lists.members(
+            id=list_id, 
+            opts = {
+                'start': page,
+                'limit': 100,
+            }
+        )
+
 if args['set']:
         setInvite(
             list_name=args['--list'],
@@ -153,7 +191,10 @@ elif args['setgroup']:
         list_name=args['--list'],
         group_name=args['<group>']
         )
-
+elif args['setall']:
+    setListInvite(
+        list_name=args['--list']
+        )
 elif args['get']:
     rec = getEmail(
         list_name=args['--list'],
