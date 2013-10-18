@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """
 Usage:
-  mailchimp-invitation.py [options] set <email>
+  mailchimp-invitation.py [options] set <email> 
   mailchimp-invitation.py [options] setgroup <group>
   mailchimp-invitation.py [options] setall
   mailchimp-invitation.py [options] get <email> 
@@ -12,6 +12,7 @@ Options:
   -c, --code=<code>         
   -l, --list=<list name>    [default: the longaccess news]
   -k, --key=<key>           [default: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-xxx]
+  -s, --salt=<salt>         [Set your secret salt.]
 
 The default values above are the ones we use for our specific environment.
 You should change them to fit yours.
@@ -31,11 +32,15 @@ APIKEY = args['--key']
 if not APIKEY:
     print 'No API KEY given. Please use "--key".\nVisit https://admin.mailchimp.com/account/api/ to generate one.'
     sys.exit(1)
+
+if not args['--salt'] and not args['get']:
+    print 'WARNING: You did not set --salt.'
+
 mc = mailchimp.Mailchimp(APIKEY)
 
-def invcode(email):
+def invcode(email, salt=''):
     m = hashlib.md5()
-    m.update('%s-set-your-own-secret-here' % email )
+    m.update('%s-%s' % (email,salt) )
     code = m.hexdigest()[:6]
     return code
 
@@ -80,7 +85,7 @@ def setInvite(list_name, email, code=None):
     if code:
         inv_code=args['--code']
     else:
-        inv_code=invcode(args['<email>'])
+        inv_code=invcode(args['<email>'], args['--salt'])
     upd = mc.lists.subscribe( 
         id=list_id, 
         email={'email': args['<email>']},
@@ -118,12 +123,11 @@ def setGroupInvite(list_name, group_name):
         batch = []
         for member in members['data']:
             count += 1 
-            invite = invcode(member['email'])
+            member['merges']['INVCODE'] = invcode(member['email'], args['--salt'])
             batch.append(
-                { 'email': { 'email': member['email']}, 'merge_vars': {'invcode': invite} }
+                { 'email': { 'email': member['email']}, 'merge_vars': member['merges'] }
                 )
-            print '%03d\t%s\t\t%s' % (count, member['email'], invite)
-        
+            print '%03d\t%s\t\t%s' % (count, member['email'], member['merges']['INVCODE'] )
         # Batch update list
         upd = mc.lists.batch_subscribe( id=list_id, update_existing=True, replace_interests=False, batch=batch)
 
@@ -145,7 +149,6 @@ def setGroupInvite(list_name, group_name):
 
 def setListInvite(list_name):
     list_id = getListID(list_name)
-    
     # Get all members of list.
     members = mc.lists.members(
         id=list_id, 
@@ -163,11 +166,11 @@ def setListInvite(list_name):
         batch = []
         for member in members['data']:
             count += 1 
-            invite = invcode(member['email'])
+            member['merges']['INVCODE'] = invcode(member['email'], args['--salt'])
             batch.append(
-                { 'email': { 'email': member['email']}, 'merge_vars': {'invcode': invite} }
+                { 'email': { 'email': member['email']}, 'merge_vars': member['merges'] }
                 )
-            print '%03d\t%s\t\t%s' % (count, member['email'], invite)
+            print '%03d\t%s\t\t%s' % (count, member['email'], member['merges']['INVCODE'])
         # Batch update list
         upd = mc.lists.batch_subscribe( id=list_id, update_existing=True, replace_interests=False, batch=batch)
         page += 1
