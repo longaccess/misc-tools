@@ -13,6 +13,7 @@ Options:
   -l, --list=<list name>    [default: the longaccess news]
   -k, --key=<key>           [default: xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx-xxx]
   -s, --salt=<salt>         [Set your secret salt.]
+  -p, --pretend             [Don't update anything. ]
 
 The default values above are the ones we use for our specific environment.
 You should change them to fit yours.
@@ -86,13 +87,15 @@ def setInvite(list_name, email, code=None):
         inv_code=args['--code']
     else:
         inv_code=invcode(args['<email>'], args['--salt'])
-    upd = mc.lists.subscribe( 
-        id=list_id, 
-        email={'email': args['<email>']},
-        update_existing=True, 
-        replace_interests=False,  
-        merge_vars={'invcode':inv_code} 
-        )
+    if not args['--pretend']:
+        upd = mc.lists.subscribe( 
+            id=list_id, 
+            email={'email': args['<email>']},
+            update_existing=True, 
+            replace_interests=False,  
+            merge_vars={'invcode':inv_code} 
+            )
+    print '%s\t\t%s' % (email, inv_code )
 def setGroupInvite(list_name, group_name):
     list_id = getListID(list_name)
     group_id = getGroupID(
@@ -129,7 +132,8 @@ def setGroupInvite(list_name, group_name):
                 )
             print '%03d\t%s\t\t%s' % (count, member['email'], member['merges']['INVCODE'] )
         # Batch update list
-        upd = mc.lists.batch_subscribe( id=list_id, update_existing=True, replace_interests=False, batch=batch)
+        if not args['--pretend']:
+            upd = mc.lists.batch_subscribe( id=list_id, update_existing=True, replace_interests=False, batch=batch)
 
         page += 1
 
@@ -172,7 +176,8 @@ def setListInvite(list_name):
                 )
             print '%03d\t%s\t\t%s' % (count, member['email'], member['merges']['INVCODE'])
         # Batch update list
-        upd = mc.lists.batch_subscribe( id=list_id, update_existing=True, replace_interests=False, batch=batch)
+        if not args['--pretend']:
+            upd = mc.lists.batch_subscribe( id=list_id, update_existing=True, replace_interests=False, batch=batch)
         page += 1
         # read next batch.
         members = mc.lists.members(
